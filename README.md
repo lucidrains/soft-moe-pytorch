@@ -35,11 +35,11 @@ out = moe(x) + x # (1, 1024, 512) - add in a transformer in place of a feedforwa
 
 ```bibtex
 @misc{puigcerver2023sparse,
-	title 	= {From Sparse to Soft Mixtures of Experts}, 
-	author 	= {Joan Puigcerver and Carlos Riquelme and Basil Mustafa and Neil Houlsby},
-	year 	= {2023},
-	eprint 	= {2308.00951},
-	archivePrefix = {arXiv},
-	primaryClass = {cs.LG}
+    title 	= {From Sparse to Soft Mixtures of Experts}, 
+    author 	= {Joan Puigcerver and Carlos Riquelme and Basil Mustafa and Neil Houlsby},
+    year 	= {2023},
+    eprint 	= {2308.00951},
+    archivePrefix = {arXiv},
+    primaryClass = {cs.LG}
 }
 ```
