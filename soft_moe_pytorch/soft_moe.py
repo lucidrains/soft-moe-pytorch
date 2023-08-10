@@ -3,7 +3,7 @@ from torch.nn import Module
 import torch.nn.functional as F
 from torch import nn, einsum, Tensor
 
-from einops import rearrange
+from einops import rearrange, pack, unpack
 
 # helper functions
 
@@ -75,6 +75,12 @@ class SoftMoE(Module):
         d - feature dimension
         """
 
+        is_image = x.ndim == 4
+
+        if is_image:
+            x = rearrange(x, 'b d h w -> b h w d')
+            x, ps = pack([x], 'b * d')
+
         # following Algorithm 1, with the normalization they proposed, but with scaling of both (the now popular rmsnorm + gamma)
 
         x = self.norm(x)
@@ -103,5 +109,9 @@ class SoftMoE(Module):
 
         out = rearrange(out, 'e b s d -> b (e s) d')
         out = einsum('b s d, b n s -> b n d', out, combine_weights)
+
+        if is_image:
+            out, = unpack(out, ps, 'b * d')
+            out = rearrange(out, 'b h w d -> b d h w')
 
         return out
