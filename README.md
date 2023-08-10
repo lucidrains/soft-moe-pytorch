@@ -1,8 +1,12 @@
+<img src="./soft-moe.1.png" width="450px"></img>
+
+<img src="./soft-moe.2.png" width="450px"></img>
+
 ## Soft MoE - Pytorch (wip)
 
-Implementation of <a href="https://arxiv.org/abs/2308.00951">Soft MoE</a>, proposed by Brain's Vision team, in Pytorch.
+Implementation of <a href="https://arxiv.org/abs/2308.00951">Soft MoE (Mixture of Experts)</a>, proposed by Brain's Vision team, in Pytorch.
 
-<a href="https://github.com/arankomat">Aran</a> notes that it has not been tested with autoregressive transformers. However, some recent <a href="https://arxiv.org/abs/2305.18295">text-to-image models</a> have started using MoE with great results, so may be a fit there.
+This MoE has only been made to work with non-autoregressive encoder. However, some recent <a href="https://arxiv.org/abs/2305.18295">text-to-image models</a> have started using MoE with great results, so may be a fit there.
 
 ## Citations
 
