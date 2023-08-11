@@ -31,6 +31,10 @@ x = torch.randn(1, 1024, 512)
 out = moe(x) + x # (1, 1024, 512) - add in a transformer in place of a feedforward at a certain layer (here showing the residual too)
 ```
 
+## Todo
+
+-  [ ] address the limitation of number of slots being fixed. think about a way to make dynamic number of slots based on sequence length
+
 ## Citations
 
 ```bibtex
