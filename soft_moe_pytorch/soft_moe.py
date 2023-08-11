@@ -29,11 +29,34 @@ class RMSNorm(Module):
 
 # expert
 
-def Expert(dim, mult = 4, dropout = 0.):
+def FeedForward(
+    dim,
+    mult = 4,
+    dropout = 0.
+):
     dim_hidden = int(dim * mult)
     return nn.Sequential(
         nn.Linear(dim, dim_hidden),
         nn.GELU(),
+        nn.Dropout(dropout),
+        nn.Linear(dim_hidden, dim)
+    )
+
+class GEGLU(Module):
+    def forward(self, x):
+        x, gate = x.chunk(2, dim = -1)
+        return x * F.gelu(gate)
+
+def GLUFeedForward(
+    dim,
+    mult = 4,
+    dropout = 0.
+):
+    dim_hidden = int(dim * mult * 2 / 3)
+
+    return nn.Sequential(
+        nn.Linear(dim, dim_hidden * 2),
+        GEGLU(),
         nn.Dropout(dropout),
         nn.Linear(dim_hidden, dim)
     )
@@ -49,7 +72,8 @@ class SoftMoE(Module):
         num_experts = 4,
         num_slots = None,
         expert_mult = 4,
-        dropout = 0.
+        dropout = 0.,
+        geglu = False
     ):
         super().__init__()
         assert exists(seq_len) ^ exists(num_slots), 'either seq_len, or num_slots must be passed into SoftMoE'
@@ -61,8 +85,10 @@ class SoftMoE(Module):
         self.slot_norm = RMSNorm(dim)
         self.slot_embeds = nn.Parameter(torch.randn(num_experts, num_slots, dim))
 
+        expert_klass = GLUFeedForward if geglu else FeedForward
+
         self.experts = nn.ModuleList([
-            Expert(dim = dim, mult = expert_mult, dropout = dropout) for _ in range(num_experts)
+            expert_klass(dim = dim, mult = expert_mult, dropout = dropout) for _ in range(num_experts)
         ])
 
     def forward(self, x):
