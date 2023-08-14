@@ -91,7 +91,7 @@ class SoftMoE(Module):
             expert_klass(dim = dim, mult = expert_mult, dropout = dropout) for _ in range(num_experts)
         ])
 
-    def forward(self, x):
+    def forward(self, x, mask = None):
         """
         einstein notation
         b - batch
@@ -113,6 +113,14 @@ class SoftMoE(Module):
         slot_embeds = self.slot_norm(self.slot_embeds)
 
         logits = einsum('b n d, e s d -> b n e s', x, slot_embeds)
+
+        # account for key padding mask
+
+        if exists(mask):
+            mask = rearrange(mask, 'b n -> b n 1 1')
+            logits = logits.masked_fill(~mask, -torch.finfo(logits.dtype).max)
+
+        # get dispatch and combine weights (softmax across right dimensions)
 
         dispatch_weights = logits.softmax(dim = 1)
 
