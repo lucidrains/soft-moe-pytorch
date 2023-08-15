@@ -8,6 +8,12 @@ Implementation of <a href="https://arxiv.org/abs/2308.00951">Soft MoE (Mixture o
 
 This MoE has only been made to work with non-autoregressive encoder. However, some recent <a href="https://arxiv.org/abs/2305.18295">text-to-image models</a> have started using MoE with great results, so may be a fit there.
 
+## Appreciation
+
+- <a href="https://stability.ai/">StabilityAI</a> for the generous sponsorship, as well as my other sponsors out there
+
+- <a href="https://github.com/arogozhnikov/einops">Einops</a> for making my life easy
+
 ## Install
 
 ```bash
