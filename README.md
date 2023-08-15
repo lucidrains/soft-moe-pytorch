@@ -31,9 +31,28 @@ x = torch.randn(1, 1024, 512)
 out = moe(x) + x # (1, 1024, 512) - add in a transformer in place of a feedforward at a certain layer (here showing the residual too)
 ```
 
+For an improvised variant that does dynamic slots so that number of slots ~= sequence length, just import `DynamicSlotsSoftMoe` instead
+
+```python
+import torch
+from soft_moe_pytorch import DynamicSlotsSoftMoE
+
+# sequence length or number of slots need not be specified
+
+moe = DynamicSlotsSoftMoE(
+    dim = 512,         # model dimensions
+    num_experts = 4,   # number of experts
+    geglu = True
+)
+
+x = torch.randn(1, 1023, 512)
+
+out = moe(x) + x # (1, 1023, 512)
+```
+
 ## Todo
 
--  [ ] address the limitation of number of slots being fixed. think about a way to make dynamic number of slots based on sequence length
+-  [x] address the limitation of number of slots being fixed. think about a way to make dynamic number of slots based on sequence length
 
 ## Citations
 
