@@ -154,6 +154,7 @@ class DynamicSlotsSoftMoE(Module):
             num = reduce(x_segmented, 'b n e d -> b n d', 'sum')
             den = reduce(segmented_mask.float(), 'b n e -> b n 1', 'sum').clamp(min = 1e-5)
             x_consecutive_mean = num / den
+            slots_mask = segmented_mask.any(dim = -1)
         else:
             x_consecutive_mean = reduce(x_segmented, 'b n e d -> b n d', 'mean')
 
@@ -168,7 +169,10 @@ class DynamicSlotsSoftMoE(Module):
 
         if exists(mask):
             mask = rearrange(mask, 'b n -> b n 1 1')
+            slots_mask = rearrange(slots_mask, 'b s -> b 1 1 s')
+
             logits = logits.masked_fill(~mask, -torch.finfo(logits.dtype).max)
+            logits = logits.masked_fill(~slots_mask, -torch.finfo(logits.dtype).max)
 
         # get dispatch and combine weights (softmax across right dimensions)
 
