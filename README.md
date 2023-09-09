@@ -62,6 +62,7 @@ out = moe(x) + x # (1, 1023, 512)
 
 - [x] address the limitation of number of slots being fixed. think about a way to make dynamic number of slots based on sequence length
 - [ ] once variable sequence length is handled in distributed, add to dynamic soft moe
+- [ ] the dispatch and combine tensors can also be split and moved into the `Experts` class to better distribute work
 
 ## Citations
 
