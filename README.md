@@ -2,7 +2,7 @@
 
 <img src="./soft-moe.2.png" width="450px"></img>
 
-## Soft MoE - Pytorch (wip)
+## Soft MoE - Pytorch
 
 Implementation of <a href="https://arxiv.org/abs/2308.00951">Soft MoE (Mixture of Experts)</a>, proposed by Brain's Vision team, in Pytorch.
 
@@ -60,7 +60,8 @@ out = moe(x) + x # (1, 1023, 512)
 
 ## Todo
 
--  [x] address the limitation of number of slots being fixed. think about a way to make dynamic number of slots based on sequence length
+- [x] address the limitation of number of slots being fixed. think about a way to make dynamic number of slots based on sequence length
+- [ ] once variable sequence length is handled in distributed, add to dynamic soft moe
 
 ## Citations
 
