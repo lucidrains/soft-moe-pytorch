@@ -24,6 +24,16 @@ def default(val, d):
 def divisible_by(num, den):
     return (num % den) == 0
 
+def chunk_num(num, chunks):
+    num_per_chunk, remainder = divmod(num, chunks)
+
+    out = []
+    for i in range(chunks):
+        n = num_per_chunk
+        out.append(n + int(i < remainder))
+
+    return out
+
 def pack_one(t, pattern):
     return pack([t], pattern)
 
@@ -32,6 +42,12 @@ def unpack_one(t, ps, pattern):
 
 def l2norm(t):
     return F.normalize(t, dim = - 1)
+
+def cumsum_exclusive(t, dim = -3):
+    assert dim < 0
+    num_pad_dims = -dim - 1
+    pre_padding = (0, 0) * num_pad_dims
+    return F.pad(t, (*pre_padding, 1, -1)).cumsum(dim = dim)
 
 # norm
 
@@ -139,6 +155,7 @@ class Experts(nn.Module):
             assert has_only_one_value(seq_sizes), 'number of tokens per expert must be the same'
 
             x, batch_sizes = self.all_gather(x)
+            total_batch_size = x.shape[0]
 
             world_size = dist.get_world_size()
             rank = dist.get_rank()
@@ -147,18 +164,38 @@ class Experts(nn.Module):
             rank = 0
 
         # the experts in use on the rank
-        # for now, make sure number of machines is right multiple
 
-        if world_size <= num_experts:
-            assert divisible_by(num_experts, world_size), 'if number of machines is less than the number of experts, the number of experts must be divisible by number of machines'
-            num_experts_per_rank = num_experts // world_size
-            expert_start_index = rank * num_experts_per_rank
+        if is_distributed:
+            if world_size <= num_experts:
+                num_experts_across_ranks = chunk_num(num_experts, world_size)
+                start_indices = cumsum_exclusive(torch.tensor(num_experts_across_ranks), dim = -1)
+
+                num_experts_per_rank = num_experts_across_ranks[rank]
+                num_experts_batches_across_ranks = tuple(i * total_batch_size for i in num_experts_across_ranks)
+
+                expert_start_index = start_indices[rank].item()
+            else:
+                num_batch_chunks = world_size // num_experts
+                total_ranks_in_use = num_batch_chunks * num_experts
+
+                expert_start_index = rank // num_batch_chunks
+
+                batch_splits = chunk_num(total_batch_size, num_batch_chunks)
+                num_experts_batches_across_ranks = batch_splits * num_experts
+
+                # for now, remaining machines just process nothing
+
+                remain_ranks = world_size % num_experts
+                num_experts_batches_across_ranks += (0,) * remain_ranks
+
+                num_experts_per_rank = int(rank < total_ranks_in_use)
+
+            assert len(num_experts_batches_across_ranks) == world_size
+
+            expert_slice = slice(expert_start_index, expert_start_index + num_experts_per_rank)
         else:
-            assert divisible_by(world_size, num_experts), 'if number of machines is greater than number of experts, machines must be divisible by number of experts, so experts are evenly distributed'
-            num_experts_per_rank = 1
-            expert_start_index = rank // (world_size // num_experts)
-
-        expert_slice = slice(expert_start_index, expert_start_index + num_experts_per_rank)
+            num_experts_per_rank = num_experts
+            expert_slice = slice(0, num_experts)
 
         # if distributed, each machine only handles subset of experts and batch
 
@@ -166,9 +203,13 @@ class Experts(nn.Module):
 
         if is_distributed:
             x, expert_batch_packed_shape = pack_one(x, '* n d')
-            x = rearrange(x, '(r eb) n d -> r eb n d', r = world_size)
+            x = x.split(num_experts_batches_across_ranks, dim = 0)
             x = split_by_rank(x)
-            x = rearrange(x, '(e b) n d -> e b n d', e = num_experts_per_rank)
+
+            if num_experts_per_rank > 0:
+                x = rearrange(x, '(e b) n d -> e b n d', e = num_experts_per_rank)
+            else:
+                x = x.reshape(num_experts, *x.shape)
 
         # get the experts in use
 
@@ -183,7 +224,10 @@ class Experts(nn.Module):
             out = expert(expert_input)
             outs.append(out)
 
-        outs = torch.stack(outs)
+        if len(outs) > 0:
+            outs = torch.stack(outs)
+        else:
+            outs = torch.empty_like(x).requires_grad_()
 
         # all gather across merged expert batches dimensions
         # then split the batch dimension back
