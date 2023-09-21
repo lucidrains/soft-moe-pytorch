@@ -49,6 +49,13 @@ def cumsum_exclusive(t, dim = -3):
     pre_padding = (0, 0) * num_pad_dims
     return F.pad(t, (*pre_padding, 1, -1)).cumsum(dim = dim)
 
+def log(t, eps = 1e-20):
+    return torch.log(t.clamp(min = eps))
+
+def gumbel_noise(t):
+    noise = torch.zeros_like(t).uniform_(0, 1)
+    return -log(-log(noise))
+
 # norm
 
 class RMSNorm(Module):
@@ -278,7 +285,7 @@ class SoftMoE(Module):
             is_distributed = is_distributed
         )
 
-    def forward(self, x, mask = None):
+    def forward(self, x, mask = None, add_noise = False, noise_mult = 1.):
         """
         einstein notation
         b - batch
@@ -300,6 +307,12 @@ class SoftMoE(Module):
         slot_embeds = self.slot_norm(self.slot_embeds)
 
         logits = einsum('b n d, e s d -> b n e s', x, slot_embeds)
+
+        # noised dispatch and combine gate logits, with annealing if needed
+
+        if add_noise:
+            noise = gumbel_noise(logits) * noise_mult
+            logits = logits + noise
 
         # account for key padding mask
 
