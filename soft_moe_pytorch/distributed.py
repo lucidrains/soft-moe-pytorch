@@ -23,7 +23,8 @@ def pad_dim_to(t, length, dim = 0):
 
 def all_gather_same_dim(t):
     world_size = dist.get_world_size()
-    gathered_tensors = [torch.empty_like(t.contiguous(), device = t.device, dtype = t.dtype) for i in range(world_size)]
+    t = t.contiguous()
+    gathered_tensors = [torch.empty_like(t, device = t.device, dtype = t.dtype) for i in range(world_size)]
     dist.all_gather(gathered_tensors, t)
     return gathered_tensors
 
