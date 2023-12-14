@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 setup(
   name = 'soft-moe-pytorch',
   packages = find_packages(exclude=[]),
-  version = '0.1.0',
+  version = '0.1.1',
   license='MIT',
   description = 'Soft MoE - Pytorch',
   author = 'Phil Wang',
