@@ -107,7 +107,8 @@ class Experts(nn.Module):
     def __init__(
         self,
         experts,
-        is_distributed = None
+        is_distributed = None,
+        offload_unused_experts_to_cpu = True
     ):
         super().__init__()
         self.num_experts = len(experts)
@@ -117,6 +118,9 @@ class Experts(nn.Module):
         if not exists(self.is_distributed):
             self.is_distributed = dist.is_initialized() and dist.get_world_size() > 1
 
+        # whether to offload unused experts to cpu, will require optimizer handles conversion of gradients to right device when accumulating
+        self.offload_unused_experts_to_cpu = offload_unused_experts_to_cpu
+
         self.all_gather = AllGather()
         self.register_buffer('dummy', torch.ones(1), persistent = False)
 
@@ -125,6 +129,9 @@ class Experts(nn.Module):
         return self.dummy.device
 
     def all_experts_to_cpu_besides(self, selection):
+        if not self.offload_unused_experts_to_cpu:
+            return
+
         if isinstance(selection, int):
             experts = [self.experts[selection]]
         if isinstance(selection, slice):
@@ -266,7 +273,8 @@ class SoftMoE(Module):
         expert_mult = 4,
         dropout = 0.,
         geglu = False,
-        is_distributed = None
+        is_distributed = None,
+        offload_unused_experts_to_cpu = True
     ):
         super().__init__()
         assert exists(seq_len) ^ exists(num_slots), 'either seq_len, or num_slots must be passed into SoftMoE'
@@ -282,7 +290,8 @@ class SoftMoE(Module):
 
         self.experts = Experts(
             experts = [expert_klass(dim = dim, mult = expert_mult, dropout = dropout) for _ in range(num_experts)],
-            is_distributed = is_distributed
+            is_distributed = is_distributed,
+            offload_unused_experts_to_cpu = offload_unused_experts_to_cpu
         )
 
     def forward(self, x, mask = None, add_noise = False, noise_mult = 1.):
