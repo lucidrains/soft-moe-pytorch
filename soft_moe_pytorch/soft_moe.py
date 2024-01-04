@@ -58,6 +58,15 @@ def gumbel_noise(t):
 
 # norm
 
+class LayerNorm(nn.Module):
+    def __init__(self, dim):
+        super().__init__()
+        self.gamma = nn.Parameter(torch.ones(dim))
+        self.register_buffer("beta", torch.zeros(dim))
+
+    def forward(self, x):
+        return F.layer_norm(x, x.shape[-1:], self.gamma, self.beta)
+
 class RMSNorm(Module):
     def __init__(self, dim):
         super().__init__()
@@ -274,16 +283,18 @@ class SoftMoE(Module):
         dropout = 0.,
         geglu = False,
         is_distributed = None,
-        offload_unused_experts_to_cpu = True
+        offload_unused_experts_to_cpu = True,
+        use_layernorm = False
     ):
         super().__init__()
         assert exists(seq_len) ^ exists(num_slots), 'either seq_len, or num_slots must be passed into SoftMoE'
 
         num_slots = default(num_slots, seq_len // num_experts)
 
-        self.norm = RMSNorm(dim)
+        norm_klass = LayerNorm if use_layernorm else RMSNorm
+        self.norm = norm_klass(dim)
 
-        self.slot_norm = RMSNorm(dim)
+        self.slot_norm = norm_klass(dim)
         self.slot_embeds = nn.Parameter(torch.randn(num_experts, num_slots, dim))
 
         expert_klass = GLUFeedForward if geglu else FeedForward
