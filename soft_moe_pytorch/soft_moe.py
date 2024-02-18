@@ -315,11 +315,14 @@ class SoftMoE(Module):
         d - feature dimension
         """
 
+        is_single_token = x.ndim == 2
         is_image = x.ndim == 4
 
         if is_image:
             x = rearrange(x, 'b d h w -> b h w d')
             x, ps = pack([x], 'b * d')
+        elif is_single_token:
+            x = rearrange(x, 'b d -> b 1 d')
 
         # following Algorithm 1, with the normalization they proposed, but with scaling of both (the now popular rmsnorm + gamma)
 
@@ -363,5 +366,7 @@ class SoftMoE(Module):
         if is_image:
             out, = unpack(out, ps, 'b * d')
             out = rearrange(out, 'b h w d -> b d h w')
+        elif is_single_token:
+            out = rearrange(out, 'b 1 d -> b d')
 
         return out
