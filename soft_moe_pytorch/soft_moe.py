@@ -289,7 +289,10 @@ class SoftMoE(Module):
         super().__init__()
         assert exists(seq_len) ^ exists(num_slots), 'either seq_len, or num_slots must be passed into SoftMoE'
 
-        num_slots = default(num_slots, seq_len // num_experts)
+        if exists(seq_len):
+            num_slots = default(num_slots, seq_len // num_experts)
+        elif exists(num_slots):
+            seq_len = num_slots * num_experts
 
         norm_klass = LayerNorm if use_layernorm else RMSNorm
         self.norm = norm_klass(dim)
