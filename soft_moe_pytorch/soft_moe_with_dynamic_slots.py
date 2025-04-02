@@ -119,11 +119,13 @@ class DynamicSlotsSoftMoE(Module):
         d - feature dimension
         """
 
-        seq_len, is_image, num_experts = x.shape[-2], x.ndim == 4, self.num_experts
+        is_image, num_experts = x.ndim == 4, self.num_experts
 
         if is_image:
             x = rearrange(x, 'b d h w -> b h w d')
             x, ps = pack([x], 'b * d')
+
+        batch, seq_len = x.shape[:2]
 
         # following Algorithm 1, with the normalization they proposed, but with scaling of both (the now popular rmsnorm + gamma)
 
@@ -138,7 +140,7 @@ class DynamicSlotsSoftMoE(Module):
 
         if is_padded:
             if not exists(mask):
-                mask = torch.ones(x.shape[:2], device = x.device, dtype = torch.bool)
+                mask = torch.ones((batch, seq_len), device = x.device, dtype = torch.bool)
 
             _, mask = pad_to_multiple(mask, num_experts, dim = -1, value = False)
 
@@ -198,8 +200,10 @@ class DynamicSlotsSoftMoE(Module):
         out = rearrange(out, 'e b s d -> b (e s) d')
         out = einsum('b s d, b n s -> b n d', out, combine_weights)
 
+        out = out[:, :seq_len]
+
         if is_image:
             out, = unpack(out, ps, 'b * d')
             out = rearrange(out, 'b h w d -> b d h w')
 
-        return out[:, :seq_len]
+        return out
